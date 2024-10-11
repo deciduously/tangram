@@ -922,12 +922,12 @@ impl Server {
 		&self,
 		dest: PathBuf,
 		output: &Arc<RwLock<Graph>>,
-		visited: &mut BTreeSet<PathBuf>,
+		visited: &mut BTreeSet<tg::artifact::Id>,
 	) -> tg::Result<()> {
-		if visited.contains(&dest) {
+		if visited.contains(&output.read().unwrap().id) {
 			return Ok(());
 		}
-		visited.insert(dest.clone());
+		visited.insert(output.read().unwrap().id.clone());
 
 		// If this is a file, write xattrs.
 		let data = output.read().unwrap().data.clone();
@@ -1006,17 +1006,14 @@ impl Server {
 			if input.read().await.root.is_none() {
 				continue;
 			}
-			let dest_ = if matches!(
+			let dest = if matches!(
 				&data,
 				tg::artifact::Data::File(_) | tg::artifact::Data::Symlink(_)
 			) {
 				dest.parent().unwrap().join(&subpath)
 			} else {
-				dest.join(subpath.clone())
+				dest.join(&subpath)
 			};
-			let dest = tokio::fs::canonicalize(&dest_).await.map_err(
-				|source| tg::error!(!source, %path = dest_.display(), "failed to canonicalize the path"),
-			)?;
 			Box::pin(self.update_xattrs_and_permissions_inner(dest, &output_, visited)).await?;
 		}
 
