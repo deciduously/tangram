@@ -1,0 +1,51 @@
+name: Build Tangram
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      [ main ]
+jobs:
+  test-packages:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+
+    name: Build Tangram on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CARGO_INCREMENTAL: 0
+    
+    steps:
+    - name: Checkout tangram repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      run: rustup update
+
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: "true"
+
+    - name: Install Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install Dependencies
+      run: bun install --frozen-lockfile
+
+    - name: Build Tangram
+      run: cargo build --release
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      id: artifact-upload-step
+      with:
+        name: tg-${{ matrix.os }}
+        path: target/release/tg
+
+    - name: Output Artifact ID
+      run: echo 'Artifact ID is ${{ steps.artifact-upload-step.outputs.artifact-id }}'
